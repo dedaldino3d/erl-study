@@ -14,7 +14,7 @@
 % * Remove include
 % -include("mongoose_ns.hrl").
 % * For it
--include("xmpp/include/xmpp.hrl").
+-include_lib("xmpp/include/xmpp.hrl").
 
 -export([handle_outgoing_message/4, handle_incoming_message/4]).
 
