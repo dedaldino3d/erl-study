@@ -1,20 +1,25 @@
 ﻿%%%-------------------------------------------------------------------
-%%% @author ludwikbukowski
-%%% @copyright (C) 2018, Erlang-Solutions
+%%% @author dedaldino3D
+%%% @copyright (C) 2020, dedaldino3D
 %%% @doc
 %%%
 %%% @end
-%%% Created : 30. Jan 2018 13:22
+%%% Created : 2 Out 2020 8:14
 %%%-------------------------------------------------------------------
 -module(mod_inbox_one2one).
--author("ludwikbukowski").
+-author("dedaldino3D").
 -include("mod_inbox.hrl").
--include("jlib.hrl").
--include("mongoose_ns.hrl").
+% * Remove include
+% -include("jlib.hrl").
+% * Remove include
+% -include("mongoose_ns.hrl").
+% * For it
+-include("xmpp/include/xmpp.hrl").
 
 -export([handle_outgoing_message/4, handle_incoming_message/4]).
 
--type packet() :: exml:element().
+% ? Changed exml:element()
+-type packet() :: xmlel().
 
 -spec handle_outgoing_message(Host :: jid:server(),
                               User :: jid:jid(),
