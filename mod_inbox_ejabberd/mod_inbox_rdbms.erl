@@ -1,17 +1,22 @@
 ﻿%%%-------------------------------------------------------------------
-%%% @author ludwikbukowski
-%%% @copyright (C) 2018, Erlang Solutions Ltd.
+%%% @author dedaldino3D
+%%% @copyright (C) 2020 dedaldino3D
 %%% @doc
 %%%
 %%% @end
 %%% Created : 30. Jan 2018 16:59
 %%%-------------------------------------------------------------------
 -module(mod_inbox_rdbms).
--author("ludwikbukowski").
--include("jlib.hrl").
--include("mongoose.hrl").
+-author("dedaldino3D").
+% * Removed, original
+% -include("jlib.hrl").
+% -include("mongoose.hrl").
+% -include("mod_inbox.hrl").
+% * Changed for
+-include_lib("xmpp/include/xmpp.hrl").
+-include("logger.hrl").
+-include("ejabberd_sql_pt.hrl").
 -include("mod_inbox.hrl").
-
 -behaviour(mod_inbox).
 
 %% API
