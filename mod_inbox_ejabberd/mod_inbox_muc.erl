@@ -26,7 +26,8 @@
 -type room_bare_jid() :: jid:jid().
 % ? Changed exml:element()
 -type packet() :: xmlel().
-
+% ? from mod_muc in MongooseIm
+-type affiliation() :: admin | owner | member | outcast | none.
 % ? Types from Mongoo mod_muc_room
 -type users_map() :: #{{user(), server(), resource()} => user()}.
 -type users_pairs() :: [{{user(), server(), resource()}, user()}].
@@ -108,8 +109,7 @@ inbox_unread_count(LServer, Acc, User) ->
 
 % ? Remove or perform update for Acc (acumulators)
 -spec update_inbox_for_muc(Acc) -> Acc when
-    % ! Check mod_muc_room
-      Acc :: mod_muc_room:update_inbox_for_muc_payload().
+      Acc :: update_inbox_for_muc_payload().
 update_inbox_for_muc(
     #{room_jid := Room,
       from_jid := From,
@@ -119,24 +119,73 @@ update_inbox_for_muc(
     F = fun(AffLJID, Affiliation) ->
             case is_allowed_affiliation(Affiliation) of
                 true ->
-                    % ! jid:to_bare() doesnt exist in jid, remove
-                    To = jid:to_bare(jid:make(AffLJID)),
+                    % To = jid:to_bare(jid:make(AffLJID)),
+                    % ? Changed version
+                    To = jid:remove_resource(jid:make(AffLJID)),
                     %% Guess direction based on user JIDs
                     Direction = direction(From, To),
                     Host = To#jid.lserver,
-                    % ! jid:replace_from_to() doesnt exist in jid, remove
-                    Packet2 = jlib:replace_from_to(FromRoomJid, To, Packet),
+                    % ? Changed version. use xmpp:? or fxml:?
+                    Packet2 = replace_from_to(FromRoomJid, To, Packet),
                     update_inbox_for_user(Direction, Host, Room, To, Packet2);
                 false ->
                     ok
             end
         end,
-    % ! mongoose_lib doesnt exist, remove
-    mongoose_lib:maps_foreach(F, AffsMap),
+    % ? changed version
+    maps_foreach(F, AffsMap),
     Acc.
 
-% ! Check mod_muc:affiliation()
--spec is_allowed_affiliation(mod_muc:affiliation()) -> boolean().
+
+
+
+%%%% -----------------
+%%%% replace_from_to from jlib in mongoose
+%%%% -----------------
+-spec replace_from_to_attrs(From :: binary(),
+                            To :: binary() | undefined,
+                            [{binary(), binary()}]) -> [{binary(), binary()}].
+replace_from_to_attrs(From, To, Attrs) ->
+    Attrs1 = lists:keydelete(<<"to">>, 1, Attrs),
+    Attrs2 = lists:keydelete(<<"from">>, 1, Attrs1),
+    Attrs3 = case To of
+                 undefined -> Attrs2;
+                 _ -> [{<<"to">>, To} | Attrs2]
+             end,
+    Attrs4 = [{<<"from">>, From} | Attrs3],
+    Attrs4.
+
+-spec replace_from_to(From :: {user(), server(), resource()}. | jid:jid(),
+                      To :: {user(), server(), resource()}. | jid:jid(),
+                      XE :: xmlel()) -> xmlel().
+replace_from_to(From, To, XE = #xmlel{attrs = Attrs}) ->
+    % TODO: original jid:to_string() do not replace jid:to_binary(), maybe will do not work
+    NewAttrs = replace_from_to_attrs(jid:to_string(From),
+                                     jid:to_string(To),
+                                     Attrs),
+    XE#xmlel{attrs = NewAttrs}.
+%%%% -----------------
+
+
+%%%% -----------------
+%%%% maps_foreach from mongoose_lib
+%%%% -----------------
+-spec maps_foreach(fun(), map()) -> ok.
+maps_foreach(Fun, Map) when is_function(Fun, 1) ->
+    maps:fold(fun(Key, Value, Acc) ->
+                      Fun({Key, Value}), Acc
+              end, ok, Map);
+maps_foreach(Fun, Map) when is_function(Fun, 2) ->
+    maps:fold(fun(Key, Value, Acc) ->
+                      Fun(Key, Value), Acc
+              end, ok, Map).
+
+%%%% -----------------
+
+
+% ? Changed version
+% ! Do not work yet, check affiliations in mod_muc or other similar option
+-spec is_allowed_affiliation(affiliation()) -> boolean().
 is_allowed_affiliation(outcast) -> false;
 is_allowed_affiliation(_)       -> true.
 
@@ -160,11 +209,25 @@ update_inbox_for_user(Direction, Host, Room, To, Packet) ->
 
 -spec direction(From :: user_jid(), To :: user_jid()) -> incoming | outgoing.
 direction(From, To) ->
-    % ? check jid:are_bare_equal()
-    case jid:are_bare_equal(From, To) of
+    case are_bare_equal(From, To) of
         true -> outgoing;
         false -> incoming
     end.
+
+%% @doc Returns true if `are_equal(to_bare(A), to_bare(B))'
+%%% ? Move this implementation to other module like jid
+-spec are_bare_equal(jid() | ljid(), jid() | ljid()) -> boolean().
+are_bare_equal(#jid{luser = LUser, lserver = LServer},
+               #jid{luser = LUser, lserver = LServer}) ->
+    true;
+are_bare_equal(#jid{luser = LUser, lserver = LServer}, {LUser, LServer, _}) ->
+    true;
+are_bare_equal({LUser, LServer, _}, #jid{luser = LUser, lserver = LServer}) ->
+    true;
+are_bare_equal({LUser, LServer, _}, {LUser, LServer, _}) ->
+    true;
+are_bare_equal(_, _) ->
+    false.
 
 %% Sender and receiver is the same user
 -spec handle_outgoing_message(Host, Room, To, Packet) -> term() when
@@ -196,9 +259,9 @@ write_to_sender_inbox(Server, User, Remote, Packet) ->
 write_to_receiver_inbox(Server, User, Remote, Packet) ->
     mod_inbox_utils:write_to_receiver_inbox(Server, User, Remote, Packet).
 
-%% @doc Check, that the host is served by MongooseIM.
+%% @doc Check, that the host is served by ejabberd.
 %% A local host can be used to fire hooks or write into database on this node.
 -spec is_local_xmpp_host(jid:lserver()) -> boolean().
 is_local_xmpp_host(LServer) ->
-    % ! my hosts came from mongoose.hrl, remove it and use others approaches
-    lists:member(LServer, ?MYHOSTS).
+    % ? Changed version
+    lists:member(LServer, ejabberd_config:get_myhosts()).

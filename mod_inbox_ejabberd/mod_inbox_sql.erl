@@ -157,7 +157,7 @@ set_inbox_incr_unread(Username, Server, ToBareJid, Content, MsgId, Timestamp) ->
     LUsername = jid:nodeprep(Username),
     LServer = jid:nameprep(Server),
     LToBareJid = jid:nameprep(ToBareJid),
-    %! Res = Not implemented yet
+    % TODO: Res = Not implemented yet
     %** Res = BackendModule:set_inbox_incr_unread(LUsername, LServer, LToBareJid,
     % ? For postgreSQL only, for now
     Res = set_inbox_incr_unread_pg(LUsername, LServer, LToBareJid,
