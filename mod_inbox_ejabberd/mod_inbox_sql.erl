@@ -13,9 +13,7 @@
 -include("ejabber_sql_pt.hrl").
 -include("mod_inbox.hrl").
 
-
 -behaviour(mod_inbox).
-
 
 % API 
 -export([
@@ -30,25 +28,22 @@
     get_inbox_unread/3
     ]).
 
-
-
 %% ----------------------------------------------------------------------
 %% Types: 
-% TODO: export from ejabberd_sql and remove it
+%%%? from ejabberd_sql
 %% ----------------------------------------------------------------------
-
 -type sql_query_result() :: {updated,non_neg_integer()} |
                             {error, binary() | atom()} |
                             {selected, [binary()], [[binary()]]} |
                             {selected, [any()]} |
                             ok.
 
-%% ----------------------------------------------------------------------
+%%%%%%%%%%%%%%%%%%%% ----------------------------------------------------------------------
 %% API
-%% ----------------------------------------------------------------------
+%%%%%%%%%%%%%%%%%%%%-----------------------------------------------------
 
 init(_Host, _Opts) ->
-    % TODOS: add...
+    % TODO: add...
     ok.
 
 -spec get_inbox(LUsername :: jid:luser(),
@@ -72,14 +67,14 @@ get_inbox_rdbms(LUser, LServer, #{ order := Order } = Params) ->
     BeginSQL = sql_and_where_timestamp(">=", maps:get(start, Params, undefined)),
     EndSQL = sql_and_where_timestamp("<=", maps:get('end', Params, undefined)),
     HiddenSQL = sql_and_where_unread_count(maps:get(hidden_read, Params, false)),
-    Query = ?SQL("select remote_bare_jid, content, unread_count, timestamp from inbox "
+    Query = ?SQL("select @(remote_bare_jid)b, @(content)b, @(unread_count)d, @(timestamp)b from inbox "
                 "where luser=%(LUser)s and lserver=%(LServer)s "
             "%(BeginSQL)b %(EndSQL)b %(HiddenSQL)b order by timestamp %(OrderSQL)b"),
     ejabberd_sql:sql_query(LServer, Query).
 
 get_inbox_unread(Username, Server, InterlocutorJID) ->
-    RemBareJIDBin = jid:to_string(jid:remove_resource(InterlocutorJID)),
-    QuerySQL = ?SQL("select unread_count from inbox "
+    RemBareJIDBin = jid:encode(jid:remove_resource(InterlocutorJID)),
+    QuerySQL = ?SQL("select @(unread_count)d from inbox "
             "where luser=%(Username)s and lserver=%(Server)s "
             "and remote_bare_jid=%(RemBareJIDBin)b"),
     Res = ejabberd_sql:sql_query(Server, QuerySQL),
@@ -185,11 +180,11 @@ set_inbox_incr_unread_pg(Username, Server, ToBareJid, Content, MsgId, Timestamp)
                 "content, unread_count, msg_id, timestamp)"
                 " values (%(Username)s, %(Server)s, %(ToBareJid), %(Content), 1"
                 " %(MsgId), %(Timestamp)s )"
-                " on conflict (luser, lserver, remote_bare_jid) do "
+                " on conflict (@(luser)s, @(lserver)s, @(remote_bare_jid)s) do"
                 " update set content=%(Content)s,"
                 " unread_count=inbox.unread_count + 1,"
                 " msg_id=%(MsgId)s"
-                " timestamp=%(Timestamp)s, returning unread_count"),
+                " timestamp=%(Timestamp)b, returning %(unread_count)d"),
     ejabberd_sql:sql_query(Server, Query).
 
 %% ----------------------------------------------------------------------
@@ -238,12 +233,9 @@ clear_inbox(Server) ->
     Res = clear_inbox_rdbms(LServer),
     check_result(Res).
 
-
-
 %% ----------------------------------------------------------------------
 %% Internal functions
 %% ----------------------------------------------------------------------
-
 
 -spec order_to_sql(Order :: asc | desc) -> binary().
 order_to_sql(asc) -> <<"ASC">>;
@@ -272,8 +264,6 @@ clear_inbox_rdbms(Username, Server) ->
 clear_inbox_rdbms(Server) ->
     ejabberd_sql:sql_query(Server, ?SQL("delete from inbox")).
 
-
-
 %%%
 %%% 
 -spec result_to_integer(binary() | integer()) -> integer().
@@ -285,17 +275,13 @@ result_to_integer(Bin) when is_binary(Bin) ->
 -spec decode_row(host(), {username(), binary(), count_bin(), non_neg_integer() | binary()}) ->
     inbox_res().
 decode_row(LServer, {Username, Content, Count, Timestamp}) ->
-    % TODO: unescape_binary Content
-    Data = Content,
+    Data = fxml_stream:parse_element(Content),
     BCount = count_to_bin(Count),
     NumericTimestamp = result_to_integer(Timestamp),
-    % TODO: check inbox_res
     {Username, Data, BCount, usec:to_now(NumericTimestamp)}.
-
 
 count_to_bin(Count) when is_integer(Count) -> integer_to_binary(Count);
 count_to_bin(Count) when is_binary(Count) -> Count;
-
 
 %%%% TODO: UNDERSTAND HOW THIS WORK
 check_result({updated, Val}, ValList) when is_list(ValList) ->

@@ -8,12 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(mod_inbox_muc).
 -author("dedaldino3D").
-% * Remove include
-% -include("jlib.hrl").
-% * Remove include
-% -include("mongoose.hrl").
-% * For it
--include_lib("xmpp/include/xmpp.hrl").
+% -include_lib("xmpp/include/xmpp.hrl").
+-include("xmpp.hrl").
 
 
 -export([update_inbox_for_muc/1, start/1, stop/1]).
@@ -24,7 +20,6 @@
 -type receiver_host() :: jid:lserver().
 -type receiver_bare_user_jid() :: user_jid().
 -type room_bare_jid() :: jid:jid().
-% ? Changed exml:element()
 -type packet() :: xmlel().
 % ? from mod_muc in MongooseIm
 -type affiliation() :: admin | owner | member | outcast | none.
@@ -55,8 +50,6 @@ stop(Host) ->
     ejabberd_hooks:delete(update_inbox_for_muc, Host, ?MODULE, update_inbox_for_muc, 90),
     ok.
 
-
-
 % ? from mongoose_hooks
 % *** THIS IS A HOOK
 -spec update_inbox_for_muc(Server, Info) -> Result when
@@ -66,8 +59,6 @@ stop(Host) ->
 update_inbox_for_muc(Server, Info) ->
     ejabberd_hooks:run_fold(update_inbox_for_muc, Server, Info, []).
 
-
-
 % ? Types from Mongoo mod_muc_room, original
 % -spec run_update_inbox_for_muc_hook(jid:server(),
 %                                     update_inbox_for_muc_payload()) -> ok.
@@ -75,7 +66,6 @@ update_inbox_for_muc(Server, Info) ->
 %     % * ejabberd_hooks dont have update_inbox_for_muc, create it here
 %     mongoose_hooks:update_inbox_for_muc(ServerHost, HookInfo),
 %     ok.
-
 % * Changed version
 -spec run_update_inbox_for_muc_hook(jid:server(),
                                     update_inbox_for_muc_payload()) -> ok.
@@ -83,29 +73,21 @@ run_update_inbox_for_muc_hook(ServerHost, HookInfo) ->
     update_inbox_for_muc(ServerHost, HookInfo),
     ok.
 
-
-% ! Cal; run_update_inbox_for_muc_hook inside a hook 
-% ! [muc_filter_message, ...]  find how messages in rooms
-% ! are handled
+% ! Call; run_update_inbox_for_muc_hook inside a hook 
+% ! [muc_filter_message, ...]  find how messages in rooms are handled
 % ! check mond_muc_room line 893 in mongoose
-
-
 
 % ? from mongoose_hooks
 % *** THIS IS A HOOK
 %%% @doc The `inbox_unread_count' hook is called to get the number of unread messages in the inbox for a user.
+%%? mongoose_acc:t() to any()
 -spec inbox_unread_count(LServer, Acc, User) -> Result when
         LServer :: jid.lserver(),
-        % !Remove acumulator
-        Acc :: mongoose_acc:t(),
+        Acc :: any(),
         User :: jid:jid(),
-        % !Remove acumulator
-        Result :: mongoose_acc:t().
+        Result :: any().
 inbox_unread_count(LServer, Acc, User) ->
     ejabberd_hooks:run_fold(inbox_unread_count, LServer, Acc, [User]).
-
-
-
 
 % ? Remove or perform update for Acc (acumulators)
 -spec update_inbox_for_muc(Acc) -> Acc when
@@ -137,8 +119,6 @@ update_inbox_for_muc(
     Acc.
 
 
-
-
 %%%% -----------------
 %%%% replace_from_to from jlib in mongoose
 %%%% -----------------
@@ -164,8 +144,6 @@ replace_from_to(From, To, XE = #xmlel{attrs = Attrs}) ->
                                      jid:to_string(To),
                                      Attrs),
     XE#xmlel{attrs = NewAttrs}.
-%%%% -----------------
-
 
 %%%% -----------------
 %%%% maps_foreach from mongoose_lib
@@ -181,7 +159,6 @@ maps_foreach(Fun, Map) when is_function(Fun, 2) ->
               end, ok, Map).
 
 %%%% -----------------
-
 
 % ? Changed version
 % ! Do not work yet, check affiliations in mod_muc or other similar option
@@ -263,5 +240,4 @@ write_to_receiver_inbox(Server, User, Remote, Packet) ->
 %% A local host can be used to fire hooks or write into database on this node.
 -spec is_local_xmpp_host(jid:lserver()) -> boolean().
 is_local_xmpp_host(LServer) ->
-    % ? Changed version
     lists:member(LServer, ejabberd_config:get_myhosts()).

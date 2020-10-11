@@ -9,16 +9,12 @@
 -module(mod_inbox_one2one).
 -author("dedaldino3D").
 -include("mod_inbox.hrl").
-% * Remove include
-% -include("jlib.hrl").
-% * Remove include
-% -include("mongoose_ns.hrl").
-% * For it
--include_lib("xmpp/include/xmpp.hrl").
+% -include_lib("xmpp/include/xmpp.hrl").
+-include("xmpp.hrl").
+
 
 -export([handle_outgoing_message/4, handle_incoming_message/4]).
 
-% ? Changed exml:element()
 -type packet() :: xmlel().
 
 -spec handle_outgoing_message(Host :: jid:server(),
